@@ -1,8 +1,7 @@
 package org.example.ridinginfomation.Garmin.Controller;
 
-import org.example.ridinginfomation.Garmin.VO.FitVo;
-import org.example.ridinginfomation.Garmin.VO.MapVO;
 import org.example.ridinginfomation.Garmin.Util.FitReader;
+import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
 import org.example.ridinginfomation.fit.Decode;
 import org.example.ridinginfomation.fit.FitRuntimeException;
 import org.example.ridinginfomation.fit.MesgBroadcaster;
@@ -41,11 +40,6 @@ public class FitController {
         connect.put("Connected", "Test");
 
         return connect;
-    }
-
-    @GetMapping("/summary")
-    public List<FitVo> getFitSummaries() {
-        return fitReader.getFitList();
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -88,16 +82,15 @@ public class FitController {
 
 
     @GetMapping("/map-by-file")
-    public ResponseEntity<MapVO> getMapByFile(@RequestParam("file") String fileName) {
+    public ResponseEntity<List<ActivityPointVO>> getMapByFile(@RequestParam("file") String fileName) {
         if (fileName.endsWith(".fit")) {
-            return fitReader.getMapForFile(fileName);
+            return fitReader.getPointsFromFit(fileName);
         } else if (fileName.endsWith(".gpx")) {
-            return fitReader.loadMapDataFromGpx(fileName);
+            return fitReader.loadPointsFromGpx(fileName);
         } else if (fileName.endsWith(".tcx")) {
-            return fitReader.loadMapDataFromTcx(fileName);
+            return fitReader.loadPointsFromTcx(fileName);
         } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
-
 }

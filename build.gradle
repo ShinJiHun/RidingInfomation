@@ -34,7 +34,13 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.h2database:h2'
+    implementation 'com.hierynomus:sshj:0.38.0' // 안정적인 버전
 }
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ["-Xlint:-removal"]
+}
+
 
 tasks.named('test') {
     enabled = false
