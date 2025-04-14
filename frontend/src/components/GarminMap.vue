@@ -50,12 +50,13 @@ export default {
       const coords = data.latitudes.map((lat, i) => [lat, data.longitudes[i]]);
       const color = this.getColorByExtension(fileName);
 
-      console.log(data);
+      const polyline = L.polyline(coords, { color }).addTo(this.map);
 
-      L.polyline(coords, {color}).addTo(this.map);
+      // 🟡 경로 기준으로 화면 자동 맞춤 (전체 지도 X)
+      this.map.fitBounds(polyline.getBounds());
 
       this.currentIndex++;
-      this.drawAllTracks();
+      this.drawAllTracks(); // 다음 경로 그리기
     }
   }
 };

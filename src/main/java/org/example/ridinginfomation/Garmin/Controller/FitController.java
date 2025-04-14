@@ -1,11 +1,9 @@
 package org.example.ridinginfomation.Garmin.Controller;
 
 import org.example.ridinginfomation.Garmin.Util.FitReader;
+import org.example.ridinginfomation.Garmin.Util.Utils;
 import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
-import org.example.ridinginfomation.fit.Decode;
-import org.example.ridinginfomation.fit.FitRuntimeException;
-import org.example.ridinginfomation.fit.MesgBroadcaster;
-import org.example.ridinginfomation.fit.RecordMesgListener;
+import org.example.ridinginfomation.fit.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,11 +12,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
+
 
 @CrossOrigin(origins = {"*"})
 @RestController
@@ -26,12 +30,13 @@ import java.util.logging.Logger;
 public class FitController {
 
     private final FitReader fitReader;
-
-    public FitController(FitReader fitReader) {
-        this.fitReader = fitReader;
-    }
-
+    private final Utils utils;
     Logger logger = Logger.getLogger(FitController.class.getName());
+
+    public FitController(FitReader fitReader, Utils utils) {
+        this.fitReader = fitReader;
+        this.utils = utils;
+    }
 
     @GetMapping("/connectTest")
     public Map<String, String> connectTest() {
@@ -68,16 +73,42 @@ public class FitController {
         }
     }
 
+
     @GetMapping("/files")
-    public ResponseEntity<List<String>> getAllFileNames() {
-        System.out.println("🔥 /files 요청 도착");
+    public List<String> getFitFileNamesForJanuary2025() throws IOException {
+        Path dir = Paths.get("src/main/resources/fit/fit");
+        List<String> result = new ArrayList<>();
 
-        List<String> files = new ArrayList<>();
-        files.addAll(fitReader.getFitFileNames("fit/fit"));
-        files.addAll(fitReader.getFitFileNames("fit/gpx"));
-        files.addAll(fitReader.getFitFileNames("fit/tcx"));
+        try (Stream<Path> stream = Files.list(dir)) {
+            stream.filter(p -> p.toString().endsWith(".fit"))
+                    .forEach(file -> {
+                        try (InputStream in = Files.newInputStream(file)) {
+                            Decode decode = new Decode();
+                            MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
 
-        return ResponseEntity.ok(files);
+                            final LocalDateTime[] startTime = {null};
+
+                            broadcaster.addListener((RecordMesg mesg) -> {
+                                if (startTime[0] == null && mesg.getTimestamp() != null) {
+                                    long fitTimestamp = mesg.getTimestamp().getTimestamp();
+                                    startTime[0] = utils.convertFitTimestamp(fitTimestamp); // ✅ 여기에 적용!
+                                }
+                            });
+
+                            decode.read(in, broadcaster);
+
+                            if (startTime[0] != null && startTime[0].getYear() == 2025 && (startTime[0].getMonthValue() == 1 || startTime[0].getMonthValue() == 2)) {
+                                String name = file.getFileName().toString();
+                                result.add(name);
+                                System.out.println("📂 추가됨: " + name + " ▶ 기록 시각: " + startTime[0]);
+                            }
+
+                        } catch (Exception e) {
+                            System.out.println("❌ FIT 파일 읽기 실패: " + file + " → " + e.getMessage());
+                        }
+                    });
+        }
+        return result;
     }
 
 
@@ -93,4 +124,5 @@ public class FitController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
 }

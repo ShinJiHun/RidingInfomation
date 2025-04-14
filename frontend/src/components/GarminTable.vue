@@ -77,7 +77,7 @@ export default {
     };
   },
   mounted() {
-    fetch("http://localhost:8085/api/fit/summary")
+    fetch("http://localhost:8080/api/fit/files")
       .then(res => res.json())
       .then(data => {
         this.fitList = data;
