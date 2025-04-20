@@ -106,8 +106,8 @@ export default {
             let valA = a.activityCoreVO?.startTime || '';
             let valB = b.activityCoreVO?.startTime || '';
             return this.sortAsc
-                ? new Date(valA) - new Date(valB)
-                : new Date(valB) - new Date(valA);
+                ? new Date(valB) - new Date(valA)
+                : new Date(valA) - new Date(valB);
           });
     },
     totalSummary() {
@@ -152,7 +152,13 @@ export default {
       ).padStart(2, '0')} (${days[date.getDay()]})`;
     },
     selectFit(item) {
-      this.selectedFit = item;
+      console.log("Select Click", item.activityCoreVO);
+      const filename = item.activityCoreVO.filename;
+
+      console.log("fileName : ", filename);
+      if (filename) {
+        this.$router.push({ name: 'RideDetail', params: { filename } });
+      }
     }
   }
 };

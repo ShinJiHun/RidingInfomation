@@ -223,6 +223,11 @@ public class FitReader {
     private RideVO processTcxFile(File file) {
         List<ActivityPointVO> points = new ArrayList<>();
         ActivityCoreVO core = new ActivityCoreVO();
+        double totalDistance = 0;
+        double totalAscent = 0;
+        LocalDateTime startTime = null;
+        LocalDateTime endTime = null;
+        double lastAltitude = -1;
 
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -230,53 +235,56 @@ public class FitReader {
             Document doc = builder.parse(file);
 
             NodeList trackpoints = doc.getElementsByTagName("Trackpoint");
-
-            double totalDistance = 0.0;
-            double totalAscent = 0.0;
-            Double lastLat = null, lastLon = null, lastEle = null;
-
             for (int i = 0; i < trackpoints.getLength(); i++) {
                 Element tp = (Element) trackpoints.item(i);
 
+                // 🗺️ 위치 정보
                 NodeList positions = tp.getElementsByTagName("Position");
                 if (positions.getLength() > 0) {
                     Element pos = (Element) positions.item(0);
                     double lat = Double.parseDouble(pos.getElementsByTagName("LatitudeDegrees").item(0).getTextContent());
                     double lon = Double.parseDouble(pos.getElementsByTagName("LongitudeDegrees").item(0).getTextContent());
+                    points.add(new ActivityPointVO(lat, lon));
+                }
 
-                    double ele = 0.0;
-                    NodeList altitudeMeters = tp.getElementsByTagName("AltitudeMeters");
-                    if (altitudeMeters.getLength() > 0) {
-                        ele = Double.parseDouble(altitudeMeters.item(0).getTextContent());
-                    }
+                // 🕒 시간
+                NodeList timeNodes = tp.getElementsByTagName("Time");
+                if (timeNodes.getLength() > 0) {
+                    String timeText = timeNodes.item(0).getTextContent();
+                    LocalDateTime time = LocalDateTime.parse(timeText.replace("Z", ""));
+                    if (startTime == null) startTime = time;
+                    endTime = time;
+                }
 
-                    if (lastEle != null && ele > lastEle) {
-                        totalAscent += (ele - lastEle);
-                    }
+                // 🧗 고도
+                NodeList altNodes = tp.getElementsByTagName("AltitudeMeters");
+                if (altNodes.getLength() > 0) {
+                    double altitude = Double.parseDouble(altNodes.item(0).getTextContent());
+                    if (lastAltitude > 0 && altitude > lastAltitude)
+                        totalAscent += (altitude - lastAltitude);
+                    lastAltitude = altitude;
+                }
 
-                    if (lastLat != null) {
-                        totalDistance += haversine(lastLat, lastLon, lat, lon);
-                    }
-
-                    lastLat = lat;
-                    lastLon = lon;
-                    lastEle = ele;
-
-                    ActivityPointVO point = new ActivityPointVO(lat, lon);
-                    point.setAltitude(ele);
-                    points.add(point);
+                // 📏 거리
+                NodeList distNodes = tp.getElementsByTagName("DistanceMeters");
+                if (distNodes.getLength() > 0) {
+                    totalDistance = Double.parseDouble(distNodes.item(0).getTextContent());
                 }
             }
 
             core.setFilename(file.getName());
-            core.setStartTime(Utils.extractStartTime(file.toPath()));
-            core.setTotalDistance(Math.round(totalDistance * 100.0) / 100.0);
+            core.setStartTime(startTime);
+            core.setEndTime(endTime);
+            core.setTotalDistance(totalDistance / 1000.0); // km로 변환
             core.setTotalAscent((int) totalAscent);
-            core.setTotalCalories((int) (totalDistance * 40));
-            core.setTotalTime(points.size() / 60);
+            core.setTotalCalories(0); // 없음
+            core.setTotalTime(startTime != null && endTime != null
+                    ? (int) java.time.Duration.between(startTime, endTime).toMinutes()
+                    : 0
+            );
 
         } catch (Exception e) {
-            logger.warn("❌ TCX 처리 실패: {}", e.getMessage());
+            logger.warn("❌ TCX 처리 실패: {} → {}", file.getName(), e.getMessage());
             return null;
         }
 
@@ -285,7 +293,6 @@ public class FitReader {
         ride.setRoute(points);
         return ride;
     }
-
 
     public ResponseEntity<List<ActivityPointVO>> getPointsFromFit(String fileName) {
         List<ActivityPointVO> points = new ArrayList<>();

@@ -1,43 +1,32 @@
 <template>
   <div id="app">
     <div class="tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.name"
-        :class="{ active: currentTab === tab.name }"
-        @click="currentTab = tab.name"
+      <router-link
+          v-for="tab in tabs"
+          :key="tab.path"
+          :to="tab.path"
+          class="tab-button"
+          :class="{ active: $route.path === tab.path }"
       >
         {{ tab.label }}
-      </button>
+      </router-link>
     </div>
 
-    <component :is="currentTabComponent" />
+    <!-- 현재 선택된 라우터 컴포넌트 표시 -->
+    <router-view />
   </div>
 </template>
 
 <script>
-import GarminTable from './components/GarminTable.vue'
-import GarminMap from './components/GarminMap.vue'
-
 export default {
   name: 'App',
-  components: {
-    GarminTable,
-    GarminMap,
-  },
   data() {
     return {
       tabs: [
-        {label: 'Garmin Table', name: 'GarminTable'},
-        {label: 'Garmin Map', name: 'GarminMap'},
+        {label: 'Garmin Table', path: '/'},
+        {label: 'Garmin Map', path: '/map'},
       ],
-      currentTab: 'GarminTable', // ✅ 초기값 수정
     };
-  },
-  computed: {
-    currentTabComponent() {
-      return this.currentTab;
-    },
   },
 };
 </script>
@@ -57,16 +46,18 @@ export default {
   margin-bottom: 30px;
 }
 
-.tabs button {
+.tab-button {
   padding: 10px 20px;
   font-size: 16px;
   cursor: pointer;
+  text-decoration: none;
   border: none;
   background: #ddd;
   border-radius: 5px;
+  color: black;
 }
 
-.tabs button.active {
+.tab-button.active {
   background: #42b983;
   color: white;
   font-weight: bold;

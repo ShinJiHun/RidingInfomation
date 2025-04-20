@@ -1,4 +1,7 @@
-import { createApp } from 'vue'
-import App from './App.vue'
+import { createApp } from 'vue';
+import App from './App.vue';
+import router from './router'; // 👈 추가
 
-createApp(App).mount('#app')
+const app = createApp(App);
+app.use(router); // 👈 필수
+app.mount('#app');
