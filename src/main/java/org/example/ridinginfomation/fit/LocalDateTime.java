@@ -60,22 +60,10 @@ public class LocalDateTime  {
         this.timestamp = timestamp;
     }
 
-    public LocalDateTime(java.util.Date date) {
-        this.timestamp = (date.getTime() - OFFSET) / 1000;
-    }
-
-    public boolean equals(DateTime dateTime) {
-        return (this.getTimestamp().equals(dateTime.getTimestamp()));
-    }
-
     public void convertSystemTimeToLocal(long offset) {
         if (timestamp < MIN) {
             timestamp += offset;
         }
-    }
-
-    public Long getTimestamp() {
-        return new Long(timestamp);
     }
 
     public java.util.Date getDate() {
@@ -85,5 +73,4 @@ public class LocalDateTime  {
     public String toString() {
         return getDate().toString();
     }
-
 }

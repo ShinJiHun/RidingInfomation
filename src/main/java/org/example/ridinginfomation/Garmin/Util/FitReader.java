@@ -24,9 +24,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Component
 public class FitReader {
@@ -50,17 +48,17 @@ public class FitReader {
 //        }
     }
 
-    public List<RideVO> getRideDataList() {
-        return cache;
-    }
-
-    public List<RideVO> loadAllFitGpxTcxData() {
-        List<RideVO> results = new ArrayList<>();
-        results.addAll(loadFromFolder("fit/fit"));
-        results.addAll(loadFromFolder("fit/gpx"));
-        results.addAll(loadFromFolder("fit/tcx"));
-        return results;
-    }
+//    public List<RideVO> getRideDataList() {
+//        return cache;
+//    }
+//
+//    public List<RideVO> loadAllFitGpxTcxData() {
+//        List<RideVO> results = new ArrayList<>();
+//        results.addAll(loadFromFolder("fit/fit"));
+//        results.addAll(loadFromFolder("fit/gpx"));
+//        results.addAll(loadFromFolder("fit/tcx"));
+//        return results;
+//    }
 
     private List<RideVO> loadFromFolder(String folderPath) {
         List<RideVO> list = new ArrayList<>();
@@ -77,11 +75,18 @@ public class FitReader {
             if (files == null) return Collections.emptyList();
 
             for (File file : files) {
-                if (file.getName().endsWith(".fit")) {
+                String name = file.getName().toLowerCase();
+
+                if (name.endsWith(".fit")) {
                     RideVO ride = processFitFile(file);
                     if (ride != null) list.add(ride);
+                } else if (name.endsWith(".gpx")) {
+                    RideVO ride = processGpxFile(file);
+                    if (ride != null) list.add(ride);
+                } else if (name.endsWith(".tcx")) {
+                    RideVO ride = processTcxFile(file);
+                    if (ride != null) list.add(ride);
                 }
-                // TODO: GPX/TCX 처리 추가 예정
             }
 
         } catch (Exception e) {
@@ -100,7 +105,23 @@ public class FitReader {
             Decode decode = new Decode();
             MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
 
+            // ✅ Session 메시지 처리
             broadcaster.addListener((SessionMesgListener) mesg -> {
+                Map<String, Object> jsonMap = new HashMap<>();
+                jsonMap.put("startTime", mesg.getStartTime() != null ? mesg.getStartTime().toString() : null);
+                jsonMap.put("totalDistance", mesg.getTotalDistance());
+                jsonMap.put("totalCalories", mesg.getTotalCalories());
+                jsonMap.put("totalAscent", mesg.getTotalAscent());
+                jsonMap.put("totalTimerTime", mesg.getTotalTimerTime());
+
+//                try {
+//                    String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonMap);
+//                    System.out.println("📦 SessionMesg JSON:\n" + json);
+//                } catch (JsonProcessingException e) {
+//                    logger.warn("❌ SessionMesg JSON 변환 실패", e);
+//                }
+
+                // ✅ core 세팅
                 if (mesg.getStartTime() != null) {
                     LocalDateTime localDateTime = mesg.getStartTime().getDate()
                             .toInstant()
@@ -108,26 +129,26 @@ public class FitReader {
                             .toLocalDateTime();
                     core.setStartTime(localDateTime);
                 }
-                if (mesg.getTotalDistance() != null) core.setTotalDistance(mesg.getTotalDistance() / 1000.0);
-                if (mesg.getTotalCalories() != null) core.setTotalCalories(mesg.getTotalCalories());
-                if (mesg.getTotalTimerTime() != null) core.setTotalTime((int) (mesg.getTotalTimerTime() / 60));
-                if (mesg.getTotalAscent() != null) core.setTotalAscent((int) mesg.getTotalAscent());
+                core.setTotalDistance(mesg.getTotalDistance() != null ? mesg.getTotalDistance() / 1000.0 : 0.0);
+                core.setTotalCalories(mesg.getTotalCalories() != null ? mesg.getTotalCalories() : 0);
+                core.setTotalTime(mesg.getTotalTimerTime() != null ? (int) (mesg.getTotalTimerTime() / 60) : 0);
+                core.setTotalAscent(mesg.getTotalAscent() != null ? mesg.getTotalAscent() : 0);
                 core.setFilename(file.getName());
             });
 
+            // ✅ Record 메시지 처리
             broadcaster.addListener((RecordMesgListener) mesg -> {
                 if (mesg.getPositionLat() != null && mesg.getPositionLong() != null) {
                     double lat = mesg.getPositionLat() * (180.0 / Math.pow(2, 31));
                     double lon = mesg.getPositionLong() * (180.0 / Math.pow(2, 31));
-                    ActivityPointVO point = new ActivityPointVO(lat, lon);
-                    points.add(point);
+                    points.add(new ActivityPointVO(lat, lon));
                 }
             });
 
             decode.read(is, broadcaster);
 
         } catch (Exception e) {
-            logger.warn("⚠️ 오류 발생 (" + file.getName() + "): " + e.getMessage());
+            logger.warn("⚠️ FIT 파싱 오류 (" + file.getName() + "): " + e.getMessage(), e);
             return null;
         }
 
@@ -135,6 +156,136 @@ public class FitReader {
         ride.setRoute(points);
         return ride;
     }
+
+    private RideVO processGpxFile(File file) {
+        List<ActivityPointVO> points = new ArrayList<>();
+        ActivityCoreVO core = new ActivityCoreVO();
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(file);
+
+            NodeList trkpts = doc.getElementsByTagName("trkpt");
+
+            double totalDistance = 0.0;
+            double totalAscent = 0.0;
+            Double lastLat = null, lastLon = null, lastEle = null;
+
+            for (int i = 0; i < trkpts.getLength(); i++) {
+                Element trkpt = (Element) trkpts.item(i);
+                double lat = Double.parseDouble(trkpt.getAttribute("lat"));
+                double lon = Double.parseDouble(trkpt.getAttribute("lon"));
+                double ele = 0.0;
+
+                NodeList eleNode = trkpt.getElementsByTagName("ele");
+                if (eleNode.getLength() > 0) {
+                    ele = Double.parseDouble(eleNode.item(0).getTextContent());
+                }
+
+                // 고도 누적 계산
+                if (lastEle != null && ele > lastEle) {
+                    totalAscent += (ele - lastEle);
+                }
+
+                // 거리 누적 계산
+                if (lastLat != null) {
+                    totalDistance += haversine(lastLat, lastLon, lat, lon);
+                }
+
+                lastLat = lat;
+                lastLon = lon;
+                lastEle = ele;
+
+                ActivityPointVO point = new ActivityPointVO(lat, lon);
+                point.setAltitude(ele); // 고도 저장
+                points.add(point);
+            }
+
+            core.setFilename(file.getName());
+            core.setStartTime(Utils.extractStartTime(file.toPath()));
+            core.setTotalDistance(Math.round(totalDistance * 100.0) / 100.0); // km
+            core.setTotalAscent((int) totalAscent);
+            core.setTotalCalories((int) (totalDistance * 40)); // 대략 거리 x 40kcal
+            core.setTotalTime(points.size() / 60); // rough estimate
+
+        } catch (Exception e) {
+            logger.warn("❌ GPX 처리 실패: {}", e.getMessage());
+            return null;
+        }
+
+        RideVO ride = new RideVO();
+        ride.setActivityCoreVO(core);
+        ride.setRoute(points);
+        return ride;
+    }
+
+    private RideVO processTcxFile(File file) {
+        List<ActivityPointVO> points = new ArrayList<>();
+        ActivityCoreVO core = new ActivityCoreVO();
+
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(file);
+
+            NodeList trackpoints = doc.getElementsByTagName("Trackpoint");
+
+            double totalDistance = 0.0;
+            double totalAscent = 0.0;
+            Double lastLat = null, lastLon = null, lastEle = null;
+
+            for (int i = 0; i < trackpoints.getLength(); i++) {
+                Element tp = (Element) trackpoints.item(i);
+
+                NodeList positions = tp.getElementsByTagName("Position");
+                if (positions.getLength() > 0) {
+                    Element pos = (Element) positions.item(0);
+                    double lat = Double.parseDouble(pos.getElementsByTagName("LatitudeDegrees").item(0).getTextContent());
+                    double lon = Double.parseDouble(pos.getElementsByTagName("LongitudeDegrees").item(0).getTextContent());
+
+                    double ele = 0.0;
+                    NodeList altitudeMeters = tp.getElementsByTagName("AltitudeMeters");
+                    if (altitudeMeters.getLength() > 0) {
+                        ele = Double.parseDouble(altitudeMeters.item(0).getTextContent());
+                    }
+
+                    if (lastEle != null && ele > lastEle) {
+                        totalAscent += (ele - lastEle);
+                    }
+
+                    if (lastLat != null) {
+                        totalDistance += haversine(lastLat, lastLon, lat, lon);
+                    }
+
+                    lastLat = lat;
+                    lastLon = lon;
+                    lastEle = ele;
+
+                    ActivityPointVO point = new ActivityPointVO(lat, lon);
+                    point.setAltitude(ele);
+                    points.add(point);
+                }
+            }
+
+            core.setFilename(file.getName());
+            core.setStartTime(Utils.extractStartTime(file.toPath()));
+            core.setTotalDistance(Math.round(totalDistance * 100.0) / 100.0);
+            core.setTotalAscent((int) totalAscent);
+            core.setTotalCalories((int) (totalDistance * 40));
+            core.setTotalTime(points.size() / 60);
+
+        } catch (Exception e) {
+            logger.warn("❌ TCX 처리 실패: {}", e.getMessage());
+            return null;
+        }
+
+        RideVO ride = new RideVO();
+        ride.setActivityCoreVO(core);
+        ride.setRoute(points);
+        return ride;
+    }
+
 
     public ResponseEntity<List<ActivityPointVO>> getPointsFromFit(String fileName) {
         List<ActivityPointVO> points = new ArrayList<>();
@@ -189,6 +340,7 @@ public class FitReader {
                 double lon = Double.parseDouble(trkpt.getAttribute("lon"));
                 points.add(new ActivityPointVO(lat, lon));
             }
+            System.out.println("GPX 파일 명 : " + fileName);
         } catch (Exception e) {
             logger.warn("❗ GPX 파싱 실패: {}", e.getMessage());
             return ResponseEntity.status(500).body(null);
@@ -229,30 +381,45 @@ public class FitReader {
         return ResponseEntity.ok(points);
     }
 
-    public List<String> getFitFileNames(String folderPath) {
-        List<String> result = new ArrayList<>();
-
+    public RideVO getRideByFile(String fileName) {
         try {
-            URL resourceUrl = getClass().getClassLoader().getResource(folderPath);
-            if (resourceUrl == null) {
-                logger.warn("❌ 리소스를 찾을 수 없습니다: " + folderPath);
-                return result;
+            String lower = fileName.toLowerCase();
+            String folderPath;
+            if (lower.endsWith(".fit")) {
+                folderPath = "fit/fit/";
+            } else if (lower.endsWith(".gpx")) {
+                folderPath = "fit/gpx/";
+            } else if (lower.endsWith(".tcx")) {
+                folderPath = "fit/tcx/";
+            } else {
+                logger.warn("❌ 지원하지 않는 파일 형식: " + fileName);
+                return null;
             }
 
-            File folder = new File(resourceUrl.toURI());
-            File[] files = folder.listFiles((dir, name) ->
-                    name.endsWith(".fit") || name.endsWith(".gpx") || name.endsWith(".tcx")
-            );
+            URL resource = getClass().getClassLoader().getResource(folderPath + fileName);
+            if (resource == null) return null;
 
-            if (files != null) {
-                for (File file : files) {
-                    result.add(file.getName());
-                }
-            }
+            File file = new File(resource.getFile());
+
+            if (lower.endsWith(".fit")) return processFitFile(file);
+            else if (lower.endsWith(".gpx")) return processGpxFile(file);
+            else if (lower.endsWith(".tcx")) return processTcxFile(file);
+
         } catch (Exception e) {
-            logger.error("⚠️ 파일 목록 가져오기 실패: {}", e.getMessage());
+            logger.error("❌ RideVO 생성 실패: {}", e.getMessage());
         }
-
-        return result;
+        return null;
     }
+
+    private double haversine(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // Radius of Earth in KM
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
 }

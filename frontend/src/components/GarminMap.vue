@@ -24,17 +24,16 @@ export default {
     }).addTo(this.map);
 
     // 2. 모든 파일 목록 요청 (fit, gpx, tcx 포함)
-    const res = await fetch('http://localhost:8085/api/fit/files');
+    const res = await fetch('http://localhost:8080/api/fit/files');
     this.fileList = await res.json();
 
-    // 3. 경로 그리기 시작
     this.drawAllTracks();
   },
   methods: {
     getColorByExtension(fileName) {
       if (fileName.endsWith('.fit')) return 'red';
-      if (fileName.endsWith('.gpx')) return 'red';
-      if (fileName.endsWith('.tcx')) return 'red';
+      if (fileName.endsWith('.gpx')) return 'blue';
+      if (fileName.endsWith('.tcx')) return 'green';
       return 'black'; // fallback
     },
     async drawAllTracks() {
@@ -43,20 +42,34 @@ export default {
         return;
       }
 
-      const fileName = this.fileList[this.currentIndex];
-      const res = await fetch(`http://localhost:8085/api/fit/map-by-file?file=${fileName}`);
+      const fileObj = this.fileList[this.currentIndex];
+      const fileName = fileObj.activityCoreVO?.filename;
+
+      if (!fileName) {
+        console.warn("❌ 유효하지 않은 파일 객체입니다:", fileObj);
+        this.currentIndex++;
+        this.drawAllTracks();
+        return;
+      }
+
+
+      console.log("file name : ", fileName);
+      const res = await fetch(`http://localhost:8080/api/fit/map-by-file?file=${encodeURIComponent(fileName)}`);
       const data = await res.json();
 
-      const coords = data.latitudes.map((lat, i) => [lat, data.longitudes[i]]);
+      if (!Array.isArray(data) || data.length === 0) {
+        console.warn(`⚠️ 데이터 없음: ${fileName}`);
+        this.currentIndex++;
+        this.drawAllTracks();
+        return;
+      }
+
+      const coords = data.map(point => [point.latitude, point.longitude]);
       const color = this.getColorByExtension(fileName);
 
-      const polyline = L.polyline(coords, { color }).addTo(this.map);
-
-      // 🟡 경로 기준으로 화면 자동 맞춤 (전체 지도 X)
-      this.map.fitBounds(polyline.getBounds());
-
+      L.polyline(coords, { color }).addTo(this.map);
       this.currentIndex++;
-      this.drawAllTracks(); // 다음 경로 그리기
+      this.drawAllTracks();
     }
   }
 };
