@@ -1,8 +1,9 @@
 package org.example.ridinginfomation.Garmin.Controller;
 
 import org.example.ridinginfomation.Garmin.Util.FitReader;
+import org.example.ridinginfomation.Garmin.Util.Utils;
+import org.example.ridinginfomation.Garmin.VO.ActivityCoreVO;
 import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
-import org.example.ridinginfomation.Garmin.VO.RideVO;
 import org.example.ridinginfomation.fit.Decode;
 import org.example.ridinginfomation.fit.FitRuntimeException;
 import org.example.ridinginfomation.fit.MesgBroadcaster;
@@ -15,14 +16,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
+import java.util.logging.Logger;
 
 
 @CrossOrigin(origins = {"*"})
@@ -31,13 +29,17 @@ import java.util.stream.Stream;
 public class FitController {
 
     private final FitReader fitReader;
+    private final Utils utils;
+    Logger logger = Logger.getLogger(FitController.class.getName());
 
-    public FitController(FitReader fitReader) {
+    public FitController(FitReader fitReader, Utils utils) {
         this.fitReader = fitReader;
+        this.utils = utils;
     }
 
     @GetMapping("/connectTest")
     public Map<String, String> connectTest() {
+        logger.info("Connecting to Fit");
         Map<String, String> connect = new HashMap<>();
         connect.put("Connected", "Test");
 
@@ -71,55 +73,10 @@ public class FitController {
     }
 
     @GetMapping("/files")
-    public List<RideVO> getFitRidesForJanuary2025() throws IOException {
-        List<RideVO> result = new ArrayList<>();
-
-        // ✅ fit 경로 처리
-        Path fitDir = Paths.get("src/main/resources/fit/fit");
-        try (Stream<Path> stream = Files.list(fitDir)) {
-            stream.filter(p -> p.toString().endsWith(".fit")).forEach(file -> {
-                try {
-                    RideVO ride = fitReader.getRideByFile(file.getFileName().toString());
-                    if (ride != null) {
-                        result.add(ride);
-                    }
-                } catch (Exception e) {
-                    System.out.println("❌ FIT 파일 읽기 실패: " + file + " → " + e.getMessage());
-                }
-            });
-        }
-
-        // ✅ gpx 경로 처리
-        Path gpxDir = Paths.get("src/main/resources/fit/gpx");
-        try (Stream<Path> stream = Files.list(gpxDir)) {
-            stream.filter(p -> p.toString().endsWith(".gpx")).forEach(file -> {
-                try {
-                    RideVO ride = fitReader.getRideByFile(file.getFileName().toString());
-                    if (ride != null) {
-                        result.add(ride);
-                    }
-                } catch (Exception e) {
-                    System.out.println("❌ GPX 파일 읽기 실패: " + file + " → " + e.getMessage());
-                }
-            });
-        }
-
-        // ✅ tcx 경로 처리
-        Path tcxDir = Paths.get("src/main/resources/fit/tcx");
-        try (Stream<Path> stream = Files.list(tcxDir)) {
-            stream.filter(p -> p.toString().endsWith(".tcx")).forEach(file -> {
-                try {
-                    RideVO ride = fitReader.getRideByFile(file.getFileName().toString());
-                    if (ride != null) {
-                        result.add(ride);
-                    }
-                } catch (Exception e) {
-                    System.out.println("❌ TCX 파일 읽기 실패: " + file + " → " + e.getMessage());
-                }
-            });
-        }
-
-        return result;
+    public List<ActivityCoreVO> getFitSummaryOnly() {
+        return fitReader.getRideDataList().stream()
+                .map(ride -> ride.getActivityCoreVO())
+                .toList();
     }
 
     @GetMapping("/map-by-file")

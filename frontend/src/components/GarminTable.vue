@@ -1,215 +1,171 @@
 <template>
   <div class="table-wrapper">
-    <h2>라이딩 기록</h2>
+    <h2>라이딩 요약</h2>
     <div v-if="loading">🚴 데이터를 불러오는 중입니다...</div>
     <table v-else class="ride-table">
       <thead>
       <tr class="table-row total-row">
-        <th>오늘 기준</th>
-        <th>거리 (km)</th>
-        <th>고도 (m)</th>
-        <th>칼로리 (kcal)</th>
-        <th>시간 (분)</th>
+        <th> 오늘 기준 </th>
+        <th> 거리 (km) </th>
+        <th> 고도 (m) </th>
+        <th> 칼로리 (kcal) </th>
+        <th> ⏱ 라이딩 시간 </th>
+        <th> ⏳ 총 시간 </th>
       </tr>
       </thead>
       <tbody>
       <tr class="table-row total-row">
-        <td>{{ formatFitDate(totalSummary.ridingDate) }}</td>
-        <td>{{ totalSummary.distanceKm.toFixed(2) }}</td>
-        <td>{{ totalSummary.altitude }}</td>
-        <td>{{ totalSummary.calories }}</td>
-        <td>
-          {{ String(parseInt(totalSummary.durationMinutes / 60)).padStart(2, '0') }} 시간
-          {{ String(totalSummary.durationMinutes % 60).padStart(2, '0') }} 분
-        </td>
+        <td>{{ formatDate(new Date()) }}</td>
+        <td>{{ totalSummary.totalDistance.toFixed(2) }}</td>
+        <td>{{ totalSummary.totalAscent }}</td>
+        <td>{{ totalSummary.totalCalories }}</td>
+        <td>{{ formatTime(totalSummary.movingTime) }}</td>
+        <td>{{ formatTime(totalSummary.totalTime) }}</td>
       </tr>
       </tbody>
       <thead>
       <tr>
-        <th @click="sortBy('ridingDate')">라이딩 일시</th>
-        <th @click="sortBy('distanceKm')">거리 (km)</th>
-        <th @click="sortBy('altitude')">고도 (m)</th>
-        <th @click="sortBy('calories')">칼로리 (kcal)</th>
-        <th @click="sortBy('durationMinutes')">시간 (분)</th>
+        <th @click="sortBy('startTime')">라이딩 일시</th>
+        <th @click="sortBy('totalDistance')">거리 (km)</th>
+        <th @click="sortBy('totalAscent')">고도 (m)</th>
+        <th @click="sortBy('totalCalories')">칼로리 (kcal)</th>
+        <th @click="sortBy('movingTime')">⏱ 라이딩 시간</th>
+        <th @click="sortBy('totalTime')">⏳ 총 시간</th>
       </tr>
       </thead>
       <tbody>
       <tr
           v-for="(item, index) in sortedList"
-          :key="index"
-          @click="selectFit(item)"
+          :key="item.filename + (item.startTime || index)"
           class="table-row"
       >
-        <td>{{ formatFitDate(item.activityCoreVO?.startTime) }}</td>
-        <td>
-          {{
-            typeof item.activityCoreVO?.totalDistance === 'number'
-                ? item.activityCoreVO.totalDistance.toFixed(2)
-                : '-'
-          }}
-        </td>
-        <td>{{ item.activityCoreVO?.totalAscent || '-' }}</td>
-        <td>{{ item.activityCoreVO?.totalCalories || '-' }}</td>
-        <td>
-          {{
-            String(parseInt((item.activityCoreVO?.totalTime || 0) / 60)).padStart(2, '0')
-          }} 시간
-          {{
-            String((item.activityCoreVO?.totalTime || 0) % 60).padStart(2, '0')
-          }} 분
-        </td>
+        <td>{{ formatDate(item.startTime) }}</td>
+        <td>{{ item.totalDistance?.toFixed(2) }}</td>
+        <td>{{ item.totalAscent }}</td>
+        <td>{{ item.totalCalories }}</td>
+        <td>{{ formatTime(item.movingTime) }}</td>
+        <td>{{ formatTime(item.totalTime) }}</td>
       </tr>
       </tbody>
     </table>
-
-    <!-- 위치 정보 표시 영역 -->
-    <div v-if="selectedFit" class="fit-detail">
-      <h3>📍 {{ formatFitDate(selectedFit.activityCoreVO?.startTime) }} 위치 정보</h3>
-      <ul v-if="selectedFit.locations && selectedFit.locations.length">
-        <li v-for="(loc, idx) in selectedFit.locations" :key="idx">
-          위도: {{ loc.lat }}, 경도: {{ loc.lng }}
-        </li>
-      </ul>
-      <p v-else>위치 정보가 없습니다.</p>
-    </div>
   </div>
 </template>
 
 <script>
 export default {
+  name: 'RideSummaryTable',
   data() {
     return {
-      fitList: [],
       loading: true,
-      sortKey: 'ridingDate',
-      sortAsc: true,
-      selectedFit: null
+      rideList: [],
+      totalSummary: {
+        totalDistance: 0,
+        totalAscent: 0,
+        totalCalories: 0,
+        movingTime: 0,
+        totalTime: 0
+      },
+      currentSortKey: '',
+      currentSortAsc: true
     };
-  },
-  mounted() {
-    fetch("http://localhost:8080/api/fit/files")
-        .then(res => res.json())
-        .then(data => {
-          this.fitList = data;
-          this.loading = false;
-        })
-        .catch(err => {
-          console.error("❌ API 오류:", err);
-          this.loading = false;
-        });
   },
   computed: {
     sortedList() {
-      return this.fitList
-          .filter(item => item?.activityCoreVO)
-          .sort((a, b) => {
-            let valA = a.activityCoreVO?.startTime || '';
-            let valB = b.activityCoreVO?.startTime || '';
-            return this.sortAsc
-                ? new Date(valB) - new Date(valA)
-                : new Date(valA) - new Date(valB);
-          });
-    },
-    totalSummary() {
-      const total = {
-        ridingDate: new Date(),
-        distanceKm: 0,
-        altitude: 0,
-        calories: 0,
-        durationMinutes: 0
-      };
-
-      this.fitList.forEach(item => {
-        const core = item.activityCoreVO;
-        if (core) {
-          total.distanceKm += core.totalDistance || 0;
-          total.altitude += core.totalAscent || 0;
-          total.calories += core.totalCalories || 0;
-          total.durationMinutes += core.totalTime || 0;
+      const key = this.currentSortKey;
+      if (!key) return this.rideList;
+      return [...this.rideList].sort((a, b) => {
+        const valA = a?.[key];
+        const valB = b?.[key];
+        if (valA === valB) return 0;
+        // 날짜 정렬
+        if (key === 'startTime') {
+          return this.currentSortAsc
+              ? new Date(valA) - new Date(valB)
+              : new Date(valB) - new Date(valA);
         }
+        // 숫자 정렬
+        return this.currentSortAsc
+            ? (valA > valB ? 1 : -1)
+            : (valA < valB ? 1 : -1);
       });
-
-      return total;
     }
   },
   methods: {
+    formatTime(minutes) {
+      if (minutes === undefined || minutes === null) return '-';
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return `${h}시간 ${m}분`;
+    },
+    formatDate(date) {
+      if (!date) return '-';
+      return new Date(date).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
     sortBy(key) {
-      if (this.sortKey === key) {
-        this.sortAsc = !this.sortAsc;
+      if (this.currentSortKey === key) {
+        this.currentSortAsc = !this.currentSortAsc;
       } else {
-        this.sortKey = key;
-        this.sortAsc = true;
+        this.currentSortKey = key;
+        this.currentSortAsc = true;
       }
     },
-    formatFitDate(dateStr) {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      const days = ['일', '월', '화', '수', '목', '금', '토'];
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-          date.getDate()
-      ).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(
-          date.getMinutes()
-      ).padStart(2, '0')} (${days[date.getDay()]})`;
-    },
-    selectFit(item) {
-      console.log("Select Click", item.activityCoreVO);
-      const filename = item.activityCoreVO.filename;
+    async fetchRideData() {
+      try {
+        const res = await fetch('/api/fit/files'); // 백엔드 API 주소
+        const data = await res.json();
+        this.rideList = data;
 
-      console.log("fileName : ", filename);
-      if (filename) {
-        this.$router.push({ name: 'RideDetail', params: { filename } });
+        this.totalSummary = {
+          totalDistance: this.rideList.reduce((sum, r) => sum + (r.totalDistance || 0), 0),
+          totalAscent: this.rideList.reduce((sum, r) => sum + (r.totalAscent || 0), 0),
+          totalCalories: this.rideList.reduce((sum, r) => sum + (r.totalCalories || 0), 0),
+          movingTime: this.rideList.reduce((sum, r) => sum + (r.movingTime || 0), 0),
+          totalTime: this.rideList.reduce((sum, r) => sum + (r.totalTime || 0), 0),
+        };
+      } catch (e) {
+        console.error('❌ 데이터 불러오기 실패', e);
+      } finally {
+        this.loading = false;
       }
     }
+  },
+  mounted() {
+    this.fetchRideData();
   }
 };
 </script>
 
 <style scoped>
-/* 👇 기존 스타일 유지 */
 .table-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 30px;
+  padding: 1rem;
+  max-width: 1000px;
+  margin: auto;
 }
+
 .ride-table {
+  width: 100%;
   border-collapse: collapse;
-  width: 55%;
-  font-size: 14px;
-  table-layout: fixed;
-  border: 3px solid #555;
-  border-radius: 6px;
-}
-th:nth-child(1) { width: 100px; }
-th:nth-child(2),
-th:nth-child(3),
-th:nth-child(4),
-th:nth-child(5) { width: 50px; }
-th, td {
-  border: 1px solid #ccc;
-  padding: 8px;
   text-align: center;
+}
+
+.ride-table th, .ride-table td {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+}
+
+.ride-table th {
+  background-color: #f4f4f4;
   cursor: pointer;
 }
-th:hover {
-  background-color: #f0f0f0;
-}
-.table-row:hover {
-  background-color: #e7f5ff;
-}
-.total-row {
-  background-color: #ffe8a1;
+
+.table-row.total-row {
   font-weight: bold;
-}
-.total-row td, .total-row th {
-  border: 3px solid #555;
-}
-.fit-detail {
-  margin-top: 20px;
-  width: 80%;
-  background-color: #f9f9f9;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background-color: #e8f5e9;
 }
 </style>

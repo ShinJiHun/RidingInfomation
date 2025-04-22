@@ -42,34 +42,20 @@ export default {
         return;
       }
 
-      const fileObj = this.fileList[this.currentIndex];
-      const fileName = fileObj.activityCoreVO?.filename;
-
-      if (!fileName) {
-        console.warn("❌ 유효하지 않은 파일 객체입니다:", fileObj);
-        this.currentIndex++;
-        this.drawAllTracks();
-        return;
-      }
-
-
-      console.log("file name : ", fileName);
-      const res = await fetch(`http://localhost:8080/api/fit/map-by-file?file=${encodeURIComponent(fileName)}`);
+      const fileName = this.fileList[this.currentIndex];
+      const res = await fetch(`http://localhost:8080/api/fit/map-by-file?file=${fileName}`);
       const data = await res.json();
 
-      if (!Array.isArray(data) || data.length === 0) {
-        console.warn(`⚠️ 데이터 없음: ${fileName}`);
-        this.currentIndex++;
-        this.drawAllTracks();
-        return;
-      }
-
-      const coords = data.map(point => [point.latitude, point.longitude]);
+      const coords = data.latitudes.map((lat, i) => [lat, data.longitudes[i]]);
       const color = this.getColorByExtension(fileName);
 
-      L.polyline(coords, { color }).addTo(this.map);
+      const polyline = L.polyline(coords, { color }).addTo(this.map);
+
+      // 🟡 경로 기준으로 화면 자동 맞춤 (전체 지도 X)
+      this.map.fitBounds(polyline.getBounds());
+
       this.currentIndex++;
-      this.drawAllTracks();
+      this.drawAllTracks(); // 다음 경로 그리기
     }
   }
 };

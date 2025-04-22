@@ -13,7 +13,8 @@ public class ActivityCoreVO {
     private LocalDateTime endTime;
     private double totalDistance;
     private int totalCalories;
-    private int totalTime;
+    private Integer movingTime; // 분 단위
+    private Integer totalTime;  // 분 단위
     private int totalAscent;
 
     @Override
