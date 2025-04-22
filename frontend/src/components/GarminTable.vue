@@ -1,6 +1,6 @@
 <template>
   <div class="table-wrapper">
-    <h2>라이딩 기록</h2>
+    <h2>라이딩2255</h2>
     <div v-if="loading">🚴 데이터를 불러오는 중입니다...</div>
     <table v-else class="ride-table">
       <thead>
@@ -15,7 +15,7 @@
       <tbody>
       <tr class="table-row total-row">
         <td>{{ formatFitDate(totalSummary.ridingDate) }}</td>
-        <td>{{ totalSummary.distanceKm.toFixed(2) }}</td>
+        <td>{{ totalSummary.distanceKm ? totalSummary.distanceKm.toFixed(2) : '0.00' }}</td>
         <td>{{ totalSummary.altitude }}</td>
         <td>{{ totalSummary.calories }}</td>
         <td>
@@ -41,7 +41,7 @@
           class="table-row"
         >
           <td>{{ formatFitDate(item.ridingDate) }}</td>
-          <td>{{ item.distanceKm.toFixed(2) }}</td>
+          <td>{{ totalSummary.distanceKm ? totalSummary.distanceKm.toFixed(2) : '0.00' }}</td>
           <td>{{ item.altitude || '-' }}</td>
           <td>{{ item.calories }}</td>
           <td>
@@ -105,8 +105,18 @@ export default {
       });
     },
     totalSummary() {
+      if (!this.fitList.length) {
+        return {
+          ridingDate: new Date(),
+          distanceKm: 0,
+          altitude: 0,
+          calories: 0,
+          durationMinutes: 0
+        };
+      }
+
       const total = {
-        ridingDate: new Date(), // 오늘 날짜
+        ridingDate: new Date(),
         distanceKm: 0,
         altitude: 0,
         calories: 0,
@@ -121,7 +131,7 @@ export default {
       });
 
       return total;
-    },
+    }
   },
   methods: {
     sortBy(key) {

@@ -17,17 +17,14 @@ export default {
     };
   },
   async mounted() {
-    // 1. 지도 초기화
     this.map = L.map('map').setView([36.35, 127.38], 7.2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
 
-    // 2. 모든 파일 목록 요청 (fit, gpx, tcx 포함)
-    const res = await fetch('http://localhost:8085/api/fit/files');
+    const res = await fetch('http://localhost:8080/api/fit/files');
     this.fileList = await res.json();
 
-    // 3. 경로 그리기 시작
     this.drawAllTracks();
   },
   methods: {
@@ -44,7 +41,7 @@ export default {
       }
 
       const fileName = this.fileList[this.currentIndex];
-      const res = await fetch(`http://localhost:8085/api/fit/map-by-file?file=${fileName}`);
+      const res = await fetch(`http://localhost:8080/api/fit/map-by-file?file=${fileName}`);
       const data = await res.json();
 
       const coords = data.latitudes.map((lat, i) => [lat, data.longitudes[i]]);

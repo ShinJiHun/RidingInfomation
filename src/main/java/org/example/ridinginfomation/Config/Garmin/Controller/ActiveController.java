@@ -1,7 +1,7 @@
-package org.example.ridinginfomation.Garmin.Controller;
+package org.example.ridinginfomation.Config.Garmin.Controller;
 
-import org.example.ridinginfomation.Garmin.Util.CsvReader;
-import org.example.ridinginfomation.Garmin.VO.ActivityVO;
+import org.example.ridinginfomation.Config.Garmin.Util.CsvReader;
+import org.example.ridinginfomation.Config.Garmin.VO.ActivityVO;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

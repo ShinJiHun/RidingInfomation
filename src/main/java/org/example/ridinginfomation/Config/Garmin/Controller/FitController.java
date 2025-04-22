@@ -1,8 +1,8 @@
-package org.example.ridinginfomation.Garmin.Controller;
+package org.example.ridinginfomation.Config.Garmin.Controller;
 
-import org.example.ridinginfomation.Garmin.Util.FitReader;
-import org.example.ridinginfomation.Garmin.Util.Utils;
-import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
+import org.example.ridinginfomation.Config.Garmin.Util.FitReader;
+import org.example.ridinginfomation.Config.Garmin.Util.Utils;
+import org.example.ridinginfomation.Config.Garmin.VO.ActivityPointVO;
 import org.example.ridinginfomation.fit.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -73,7 +73,6 @@ public class FitController {
         }
     }
 
-
     @GetMapping("/files")
     public List<String> getFitFileNamesForJanuary2025() throws IOException {
         Path dir = Paths.get("src/main/resources/fit/fit");
@@ -88,16 +87,21 @@ public class FitController {
 
                             final LocalDateTime[] startTime = {null};
 
-                            broadcaster.addListener((RecordMesg mesg) -> {
-                                if (startTime[0] == null && mesg.getTimestamp() != null) {
-                                    long fitTimestamp = mesg.getTimestamp().getTimestamp();
-                                    startTime[0] = utils.convertFitTimestamp(fitTimestamp); // ✅ 여기에 적용!
+                            // ✅ FileIdMesgListener 등록
+                            broadcaster.addListener((FileIdMesg fileIdMesg) -> {
+                                if (fileIdMesg.getTimeCreated() != null && startTime[0] == null) {
+                                    long fitTimestamp = fileIdMesg.getTimeCreated().getTimestamp();
+                                    startTime[0] = utils.convertFitTimestamp(fitTimestamp);
                                 }
                             });
 
+                            // ✅ 최소한의 파싱만 수행 (record 안 읽음)
                             decode.read(in, broadcaster);
 
-                            if (startTime[0] != null && startTime[0].getYear() == 2025 && (startTime[0].getMonthValue() == 1 || startTime[0].getMonthValue() == 2)) {
+                            if (startTime[0] != null &&
+                                    startTime[0].getYear() == 2025 &&
+                                    (startTime[0].getMonthValue() == 1 || startTime[0].getMonthValue() == 2)) {
+
                                 String name = file.getFileName().toString();
                                 result.add(name);
                                 System.out.println("📂 추가됨: " + name + " ▶ 기록 시각: " + startTime[0]);

@@ -1,4 +1,4 @@
-package org.example.ridinginfomation.Garmin.Util;
+package org.example.ridinginfomation.Config.Garmin.Util;
 
 import org.springframework.stereotype.Component;
 

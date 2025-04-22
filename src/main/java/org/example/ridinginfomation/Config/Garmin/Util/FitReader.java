@@ -1,9 +1,9 @@
-package org.example.ridinginfomation.Garmin.Util;
+package org.example.ridinginfomation.Config.Garmin.Util;
 
 import jakarta.annotation.PostConstruct;
-import org.example.ridinginfomation.Garmin.VO.ActivityCoreVO;
-import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
-import org.example.ridinginfomation.Garmin.VO.RideVO;
+import org.example.ridinginfomation.Config.Garmin.VO.ActivityCoreVO;
+import org.example.ridinginfomation.Config.Garmin.VO.ActivityPointVO;
+import org.example.ridinginfomation.Config.Garmin.VO.RideVO;
 import org.example.ridinginfomation.fit.Decode;
 import org.example.ridinginfomation.fit.MesgBroadcaster;
 import org.example.ridinginfomation.fit.RecordMesgListener;
@@ -37,17 +37,17 @@ public class FitReader {
 
     @PostConstruct
     public void init() {
-//        System.out.println("🚴 FIT 파일 로딩 시작...");
-//        long start = System.currentTimeMillis();
-//        cache.addAll(loadAllFitGpxTcxData());
-//        System.out.println("✅ FIT 파일 로딩 완료 (" + (System.currentTimeMillis() - start) + "ms)");
-//
-//        // 🔽 서버에 업로드 (이 부분!)
-//        try {
-//            Utils.uploadWithOsBasedKey("34.70.180.38", 22, "jihoon.shin");
-//        } catch (Exception e) {
-//            logger.error("❌ 서버 업로드 중 오류 발생", e);
-//        }
+        System.out.println("🚴 FIT 파일 로딩 시작...");
+        long start = System.currentTimeMillis();
+        cache.addAll(loadAllFitGpxTcxData());
+        System.out.println("✅ FIT 파일 로딩 완료 (" + (System.currentTimeMillis() - start) + "ms)");
+
+        // 🔽 서버에 업로드 (이 부분!)
+        try {
+            Utils.uploadWithOsBasedKey("34.172.162.148", 22, "tho881");
+        } catch (Exception e) {
+            logger.error("❌ 서버 업로드 중 오류 발생", e);
+        }
     }
 
     public List<RideVO> getRideDataList() {

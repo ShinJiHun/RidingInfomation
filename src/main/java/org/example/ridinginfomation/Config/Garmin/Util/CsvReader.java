@@ -1,6 +1,6 @@
-package org.example.ridinginfomation.Garmin.Util;
+package org.example.ridinginfomation.Config.Garmin.Util;
 
-import org.example.ridinginfomation.Garmin.VO.ActivityVO;
+import org.example.ridinginfomation.Config.Garmin.VO.ActivityVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

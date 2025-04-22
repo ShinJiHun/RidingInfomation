@@ -1,4 +1,4 @@
-package org.example.ridinginfomation.Garmin.Util;
+package org.example.ridinginfomation.Config.Garmin.Util;
 
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.connection.channel.direct.Session;
@@ -32,10 +32,9 @@ public class Utils {
             ssh.addHostKeyVerifier(new PromiscuousVerifier());
             ssh.connect(host, port);
 
-            // OS 기반 설정
             String os = System.getProperty("os.name").toLowerCase();
             String privateKeyPath = os.contains("win")
-                    ? "D:/key/gcp/temp/riding_key_nopass"
+                    ? "D:\\key\\gcp\\temp\\riding_key_nopass"
                     : "/Users/jihoon.shin/Desktop/development/key/riding_key_mac_nopass";
             String localRoot = os.contains("win")
                     ? "D:/development/project/RidingInfomation/src/main/resources/fit"
@@ -45,12 +44,8 @@ public class Utils {
             KeyProvider keyProvider = ssh.loadKeys(privateKeyPath, (char[]) null);
             ssh.authPublickey(user, keyProvider);
 
-            // ✅ 서버 파일 목록 가져오기
             Set<String> remoteFiles = fetchRemoteFiles(ssh, remoteRoot);
-
-            // ✅ 파일 전송 (이미 존재하는 파일 제외)
             uploadNewFilesOnly(localRoot, remoteRoot, ssh, remoteFiles);
-
             System.out.println("✅ 새로운 파일만 전송 완료");
 
         } catch (Exception e) {
@@ -65,13 +60,11 @@ public class Utils {
             throw new IOException(localDirPath + " is not a directory");
         }
 
-        // 원격 디렉토리 생성
         try (Session session = ssh.startSession()) {
             session.exec("mkdir -p " + remoteDirPath).join();
         }
 
         for (File file : Objects.requireNonNull(dir.listFiles())) {
-            // ⛔ .DS_Store 및 숨김 파일 제외
             if (file.getName().startsWith(".")) {
                 System.out.println("⏭️ 숨김 파일 제외: " + file.getName());
                 continue;

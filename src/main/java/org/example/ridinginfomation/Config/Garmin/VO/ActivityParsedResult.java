@@ -1,4 +1,4 @@
-package org.example.ridinginfomation.Garmin.VO;
+package org.example.ridinginfomation.Config.Garmin.VO;
 
 import java.util.List;
 

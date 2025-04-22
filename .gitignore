@@ -33,5 +33,17 @@ out/
 /nbdist/
 /.nb-gradle/
 
+
 ### VS Code ###
 .vscode/
+
+### Vue.js ###
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.env.local
+/frontend/.env.*.local
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+/frontend/pnpm-lock.yaml
+/frontend/package-lock.json
