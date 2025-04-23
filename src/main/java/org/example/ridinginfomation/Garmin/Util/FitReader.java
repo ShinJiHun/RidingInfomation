@@ -16,6 +16,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+import java.io.IOException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
@@ -27,6 +28,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.io.InputStream;
 
 @Component
 public class FitReader {
@@ -263,5 +267,45 @@ public class FitReader {
         }
 
         return result;
+    }
+
+    public RideVO readFromFile(Path path) {
+        RideVO ride = new RideVO();
+        List<ActivityPointVO> route = new ArrayList<>();
+
+        try (InputStream in = Files.newInputStream(path)) {
+            Decode decode = new Decode();
+            MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
+
+            final ActivityCoreVO core = new ActivityCoreVO();
+
+            broadcaster.addListener((RecordMesgListener) record -> {
+                if (record.getTimestamp() != null && core.getStartTime() == null) {
+                    core.setStartTime(Utils.convertFitTimestamp(record.getTimestamp().getTimestamp()));
+                }
+                if (record.getPositionLat() != null && record.getPositionLong() != null) {
+                    double lat = record.getPositionLat() * (180.0 / Math.pow(2, 31));
+                    double lng = record.getPositionLong() * (180.0 / Math.pow(2, 31));
+                    route.add(new ActivityPointVO(lat, lng));
+                }
+                if (record.getDistance() != null) {
+                    core.setTotalDistance(record.getDistance() / 1000.0); // ✅ totalDistance 필드에 대응
+                }
+                if (record.getAltitude() != null) {
+                    core.setTotalAscent(record.getAltitude().intValue()); // ✅ totalAscent 필드에 대응
+                }
+            });
+
+            decode.read(in, broadcaster);
+
+            core.setFilename(path.getFileName().toString()); // ✅ filename 필드에 대응
+            ride.setActivityCoreVO(core);
+            ride.setRoute(route);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return ride;
     }
 }

@@ -4,6 +4,7 @@ import org.example.ridinginfomation.Garmin.Util.FitReader;
 import org.example.ridinginfomation.Garmin.Util.Utils;
 import org.example.ridinginfomation.Garmin.VO.ActivityCoreVO;
 import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
+import org.example.ridinginfomation.Garmin.VO.RideVO;
 import org.example.ridinginfomation.fit.Decode;
 import org.example.ridinginfomation.fit.FitRuntimeException;
 import org.example.ridinginfomation.fit.MesgBroadcaster;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.nio.file.Paths;
 
 
 @CrossOrigin(origins = {"*"})
@@ -92,4 +94,9 @@ public class FitController {
         }
     }
 
+    @GetMapping("/detail/{filename}")
+    public ResponseEntity<RideVO> getFitDetail(@PathVariable String filename) {
+        RideVO ride = fitReader.readFromFile(Paths.get("/home/tho881/NAS/fit/" + filename));
+        return ResponseEntity.ok(ride);
+    }
 }

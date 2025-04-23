@@ -4,6 +4,13 @@
   </div>
 </template>
 
+<style scoped>
+#map {
+  width: 100%;
+  height: 1000px;
+}
+</style>
+
 <script>
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -14,17 +21,23 @@ export default {
       map: null,
       fileList: [],
       currentIndex: 0,
+      baseUrl: '', // ✅ 여기 저장할 것
     };
   },
   async mounted() {
+    // 0. Spring에서 API base URL 받아오기
+    const configRes = await fetch('/api/config/base-url');
+    const config = await configRes.json();
+    this.baseUrl = config.baseUrl;
+
     // 1. 지도 초기화
     this.map = L.map('map').setView([36.35, 127.38], 7.2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
     }).addTo(this.map);
 
-    // 2. 모든 파일 목록 요청 (fit, gpx, tcx 포함)
-    const res = await fetch('http://localhost:8080/api/fit/files');
+    // 2. 모든 파일 목록 요청
+    const res = await fetch(`${this.baseUrl}/api/fit/files`);
     this.fileList = await res.json();
 
     this.drawAllTracks();
@@ -43,27 +56,18 @@ export default {
       }
 
       const fileName = this.fileList[this.currentIndex];
-      const res = await fetch(`http://localhost:8080/api/fit/map-by-file?file=${fileName}`);
+      const res = await fetch(`${this.baseUrl}/api/fit/map-by-file?file=${fileName}`);
       const data = await res.json();
 
       const coords = data.latitudes.map((lat, i) => [lat, data.longitudes[i]]);
       const color = this.getColorByExtension(fileName);
 
       const polyline = L.polyline(coords, { color }).addTo(this.map);
-
-      // 🟡 경로 기준으로 화면 자동 맞춤 (전체 지도 X)
       this.map.fitBounds(polyline.getBounds());
 
       this.currentIndex++;
-      this.drawAllTracks(); // 다음 경로 그리기
+      this.drawAllTracks();
     }
   }
 };
 </script>
-
-<style scoped>
-#map {
-  width: 100%;
-  height: 1000px;
-}
-</style>

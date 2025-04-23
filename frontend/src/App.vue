@@ -11,8 +11,6 @@
         {{ tab.label }}
       </router-link>
     </div>
-
-    <!-- 현재 선택된 라우터 컴포넌트 표시 -->
     <router-view />
   </div>
 </template>
@@ -25,6 +23,7 @@ export default {
       tabs: [
         {label: 'Garmin Table', path: '/'},
         {label: 'Garmin Map', path: '/map'},
+        {label: 'Detail Page', path: '/ride/sample.fit'}, // ✔️ 실제 존재하는 라우트
       ],
     };
   },
