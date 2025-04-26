@@ -2,7 +2,7 @@ package org.example.ridinginfomation.Garmin.VO;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.example.ridinginfomation.fit.LocalDateTime;
+import org.example.ridinginfomation.Garmin.Util.LocalDateTime;
 
 // ✅ ActivityPointVO.java
 

@@ -11,7 +11,7 @@ public class ActivityCoreVO {
     private String filename;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
-    private double totalDistance;
+    private Double totalDistance; // ✅ double → Double로 변경
     private int totalCalories;
     private Integer movingTime; // 분 단위
     private Integer totalTime;  // 분 단위

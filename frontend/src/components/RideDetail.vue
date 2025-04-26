@@ -1,50 +1,63 @@
 <template>
-  <div class="feed">
+  <div class="feed" v-if="rideInfo">
     <h2>📍 상세 정보</h2>
     <div class="meta">
-      <p>파일 이름: {{ filename }}</p>
-      <p>업로드 날짜: 2025-04-23</p>
+      <p>파일 이름: {{ rideInfo.activityCoreVO.filename }}</p>
+      <p>시작 시간: {{ formatDate(rideInfo.activityCoreVO.startTime) }}</p>
       <p>운동 유형: 자전거</p>
     </div>
 
     <div class="feed-card">
       <img src="https://via.placeholder.com/600x300" alt="Ride Snapshot" />
       <div class="feed-content">
-        <p><strong>거리:</strong> 42.5km</p>
-        <p><strong>고도 상승:</strong> 530m</p>
-        <p><strong>시간:</strong> 1시간 35분</p>
+        <p><strong>거리:</strong> {{ rideInfo.activityCoreVO.totalDistance.toFixed(2) }}km</p>
+        <p><strong>고도 상승:</strong> {{ rideInfo.activityCoreVO.totalAscent }}m</p>
+        <p><strong>시간:</strong> {{ formatTime(rideInfo.activityCoreVO.movingTime) }}</p>
         <p>오늘도 열심히 달렸습니다! 날씨가 정말 좋았고, 업힐도 재미있었어요 🚴‍♂️☀️</p>
       </div>
     </div>
-
-    <div class="feed-card">
-      <img src="https://via.placeholder.com/600x300" alt="Ride Snapshot" />
-      <div class="feed-content">
-        <p><strong>거리:</strong> 28.2km</p>
-        <p><strong>고도 상승:</strong> 210m</p>
-        <p><strong>시간:</strong> 1시간 10분</p>
-        <p>간단한 리커버리 라이딩. 평지를 위주로 천천히 달렸어요. 기분 좋게 마무리!</p>
-      </div>
-    </div>
+  </div>
+  <div v-else class="feed">
+    ⏳ 상세 데이터를 불러오는 중입니다...
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref, getCurrentInstance } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
 const filename = route.params.filename;
 const rideInfo = ref(null);
 
-const { proxy } = getCurrentInstance(); // 👈 this.$axios 사용을 위해 getCurrentInstance() 사용
-
 onMounted(async () => {
-  const res = await proxy.$axios.get(`/api/fit/detail/${filename}`);
-  rideInfo.value = res.data;
-
-  console.log(rideInfo.value);
+  try {
+    const res = await fetch(`/api/fit/detail/${filename}`);
+    rideInfo.value = await res.json();
+    console.log('✅ rideInfo:', rideInfo.value);
+  } catch (e) {
+    console.error('❌ 상세 데이터 로딩 실패', e);
+  }
 });
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatTime = (minutes) => {
+  if (minutes == null) return '-';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h}시간 ${m}분`;
+};
 </script>
 
 <style scoped>

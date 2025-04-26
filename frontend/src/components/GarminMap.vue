@@ -40,7 +40,7 @@ export default {
     const res = await fetch(`${this.baseUrl}/api/fit/files`);
     this.fileList = await res.json();
 
-    this.drawAllTracks();
+    // this.drawAllTracks();
   },
   methods: {
     getColorByExtension(fileName) {

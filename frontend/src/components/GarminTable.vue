@@ -5,12 +5,12 @@
     <table v-else class="ride-table">
       <thead>
       <tr class="table-row total-row">
-        <th> 오늘 기준 </th>
-        <th> 거리 (km) </th>
-        <th> 고도 (m) </th>
-        <th> 칼로리 (kcal) </th>
-        <th> ⏱ 라이딩 시간 </th>
-        <th> ⏳ 총 시간 </th>
+        <th>오늘 기준</th>
+        <th>거리 (km)</th>
+        <th>고도 (m)</th>
+        <th>칼로리 (kcal)</th>
+        <th>⏱ 라이딩 시간</th>
+        <th>⏳ 총 시간</th>
       </tr>
       </thead>
       <tbody>
@@ -35,9 +35,10 @@
       </thead>
       <tbody>
       <tr
-          v-for="(item, index) in sortedList"
-          :key="item.filename + (item.startTime || index)"
-          class="table-row"
+          v-for="item in sortedList"
+          :key="item.filename"
+          class="clickable-row"
+          @click="onRowClick(item.filename)"
       >
         <td>{{ formatDate(item.startTime) }}</td>
         <td>{{ item.totalDistance?.toFixed(2) }}</td>
@@ -77,13 +78,11 @@ export default {
         const valA = a?.[key];
         const valB = b?.[key];
         if (valA === valB) return 0;
-        // 날짜 정렬
         if (key === 'startTime') {
           return this.currentSortAsc
               ? new Date(valA) - new Date(valB)
               : new Date(valB) - new Date(valA);
         }
-        // 숫자 정렬
         return this.currentSortAsc
             ? (valA > valB ? 1 : -1)
             : (valA < valB ? 1 : -1);
@@ -117,8 +116,10 @@ export default {
     },
     async fetchRideData() {
       try {
-        const res = await fetch('/api/fit/files'); // 백엔드 API 주소
+        const res = await fetch('/api/fit/files');
+        console.log("Resources : ", res);
         const data = await res.json();
+        console.log("this.data : ", data);
         this.rideList = data;
 
         this.totalSummary = {
@@ -126,13 +127,16 @@ export default {
           totalAscent: this.rideList.reduce((sum, r) => sum + (r.totalAscent || 0), 0),
           totalCalories: this.rideList.reduce((sum, r) => sum + (r.totalCalories || 0), 0),
           movingTime: this.rideList.reduce((sum, r) => sum + (r.movingTime || 0), 0),
-          totalTime: this.rideList.reduce((sum, r) => sum + (r.totalTime || 0), 0),
+          totalTime: this.rideList.reduce((sum, r) => sum + (r.totalTime || 0), 0)
         };
       } catch (e) {
         console.error('❌ 데이터 불러오기 실패', e);
       } finally {
         this.loading = false;
       }
+    },
+    onRowClick(filename) {
+      this.$router.push(`/ride/${filename}`);
     }
   },
   mounted() {
@@ -167,5 +171,9 @@ export default {
 .table-row.total-row {
   font-weight: bold;
   background-color: #e8f5e9;
+}
+
+.clickable-row {
+  cursor: pointer;
 }
 </style>

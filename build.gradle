@@ -36,6 +36,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     runtimeOnly 'com.h2database:h2'
     implementation 'com.hierynomus:sshj:0.38.0' // 안정적인 버전
+    implementation files('libs/fit.jar')
 }
 
 tasks.withType(JavaCompile) {

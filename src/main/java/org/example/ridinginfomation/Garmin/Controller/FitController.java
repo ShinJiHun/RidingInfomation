@@ -1,14 +1,13 @@
 package org.example.ridinginfomation.Garmin.Controller;
 
+import com.garmin.fit.Decode;
+import com.garmin.fit.FitRuntimeException;
+import com.garmin.fit.MesgBroadcaster;
+import com.garmin.fit.RecordMesgListener;
 import org.example.ridinginfomation.Garmin.Util.FitReader;
 import org.example.ridinginfomation.Garmin.Util.Utils;
 import org.example.ridinginfomation.Garmin.VO.ActivityCoreVO;
-import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
 import org.example.ridinginfomation.Garmin.VO.RideVO;
-import org.example.ridinginfomation.fit.Decode;
-import org.example.ridinginfomation.fit.FitRuntimeException;
-import org.example.ridinginfomation.fit.MesgBroadcaster;
-import org.example.ridinginfomation.fit.RecordMesgListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.nio.file.Paths;
 
 
 @CrossOrigin(origins = {"*"})
@@ -81,22 +79,22 @@ public class FitController {
                 .toList();
     }
 
-    @GetMapping("/map-by-file")
-    public ResponseEntity<List<ActivityPointVO>> getMapByFile(@RequestParam("file") String fileName) {
-        if (fileName.endsWith(".fit")) {
-            return fitReader.getPointsFromFit(fileName);
-        } else if (fileName.endsWith(".gpx")) {
-            return fitReader.loadPointsFromGpx(fileName);
-        } else if (fileName.endsWith(".tcx")) {
-            return fitReader.loadPointsFromTcx(fileName);
-        } else {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
-    }
+//    @GetMapping("/map-by-file")
+//    public ResponseEntity<List<ActivityPointVO>> getMapByFile(@RequestParam("file") String fileName) {
+//        if (fileName.endsWith(".fit")) {
+//            return fitReader.getPointsFromFit(fileName);
+//        } else if (fileName.endsWith(".gpx")) {
+//            return fitReader.loadPointsFromGpx(fileName);
+//        } else if (fileName.endsWith(".tcx")) {
+//            return fitReader.loadPointsFromTcx(fileName);
+//        } else {
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+//        }
+//    }
 
     @GetMapping("/detail/{filename}")
     public ResponseEntity<RideVO> getFitDetail(@PathVariable String filename) {
-        RideVO ride = fitReader.readFromFile(Paths.get("/home/tho881/NAS/fit/" + filename));
+        RideVO ride = fitReader.readFromFile(filename);
         return ResponseEntity.ok(ride);
     }
 }

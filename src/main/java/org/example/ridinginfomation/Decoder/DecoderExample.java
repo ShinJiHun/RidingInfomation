@@ -1,6 +1,6 @@
 package org.example.ridinginfomation.Decoder;
 
-import org.example.ridinginfomation.fit.*;
+import com.garmin.fit.*;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;

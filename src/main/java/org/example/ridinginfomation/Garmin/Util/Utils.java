@@ -1,12 +1,12 @@
 package org.example.ridinginfomation.Garmin.Util;
 
+import com.garmin.fit.Decode;
+import com.garmin.fit.MesgBroadcaster;
+import com.garmin.fit.RecordMesg;
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
-import org.example.ridinginfomation.fit.Decode;
-import org.example.ridinginfomation.fit.MesgBroadcaster;
-import org.example.ridinginfomation.fit.RecordMesg;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

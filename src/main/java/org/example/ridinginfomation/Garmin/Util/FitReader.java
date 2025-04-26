@@ -1,58 +1,55 @@
+// ✅ FitReader.java
 package org.example.ridinginfomation.Garmin.Util;
 
+import com.garmin.fit.Decode;
+import com.garmin.fit.MesgBroadcaster;
+import com.garmin.fit.RecordMesgListener;
+import com.garmin.fit.SessionMesgListener;
 import jakarta.annotation.PostConstruct;
 import org.example.ridinginfomation.Garmin.VO.ActivityCoreVO;
 import org.example.ridinginfomation.Garmin.VO.ActivityPointVO;
 import org.example.ridinginfomation.Garmin.VO.RideVO;
-import org.example.ridinginfomation.fit.Decode;
-import org.example.ridinginfomation.fit.MesgBroadcaster;
-import org.example.ridinginfomation.fit.RecordMesgListener;
-import org.example.ridinginfomation.fit.SessionMesgListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
-import java.io.IOException;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.nio.file.Path;
-import java.nio.file.Files;
-import java.io.InputStream;
 
 @Component
 public class FitReader {
 
     private static final Logger logger = LoggerFactory.getLogger(FitReader.class);
-
     private final List<RideVO> cache = new ArrayList<>();
+
+    private Float previousAltitude = null;
+    private int totalAscent = 0;
 
     @PostConstruct
     public void init() {
         System.out.println("🚴 FIT 파일 로딩 시작...");
         long start = System.currentTimeMillis();
-        cache.addAll(loadAllFitGpxTcxData());
-        System.out.println("✅ FIT 파일 로딩 완료 (" + (System.currentTimeMillis() - start) + "ms)");
+        List<RideVO> loaded = loadAllFitGpxTcxData();
 
-        // 🔽 서버에 업로드 (이 부분!)
-        try {
-            Utils.uploadWithOsBasedKey("34.172.162.148", 22, "tho881");
-        } catch (Exception e) {
-            logger.error("❌ 서버 업로드 중 오류 발생", e);
-        }
+        // 최신순 정렬
+        loaded.sort((a, b) -> {
+            LocalDateTime t1 = a.getActivityCoreVO().getStartTime();
+            LocalDateTime t2 = b.getActivityCoreVO().getStartTime();
+            return t2.compareTo(t1); // 최신 먼저
+        });
+
+        cache.addAll(loaded);
+        System.out.println("✅ FIT 파일 로딩 완료 (" + (System.currentTimeMillis() - start) + "ms)");
     }
+
 
     public List<RideVO> getRideDataList() {
         return cache;
@@ -60,9 +57,9 @@ public class FitReader {
 
     public List<RideVO> loadAllFitGpxTcxData() {
         List<RideVO> results = new ArrayList<>();
-        results.addAll(loadFromFolder("fit/fit"));
-        results.addAll(loadFromFolder("fit/gpx"));
-        results.addAll(loadFromFolder("fit/tcx"));
+        results.addAll(loadFromFolder("/home/tho881/NAS/fit"));
+        results.addAll(loadFromFolder("/home/tho881/NAS/gpx"));
+        results.addAll(loadFromFolder("/home/tho881/NAS/tcx"));
         return results;
     }
 
@@ -70,32 +67,17 @@ public class FitReader {
         List<RideVO> list = new ArrayList<>();
 
         try {
-            URL resource = getClass().getClassLoader().getResource(folderPath);
-            if (resource == null) {
-                logger.warn("❌ 리소스를 찾을 수 없습니다: " + folderPath);
-                return Collections.emptyList();
-            }
-
-            File dir = new File(resource.getFile());
+            File dir = new File(folderPath);
             File[] files = dir.listFiles();
             if (files == null) return Collections.emptyList();
 
             for (File file : files) {
                 String name = file.getName().toLowerCase();
-
                 if (name.endsWith(".fit")) {
                     RideVO ride = processFitFile(file);
                     if (ride != null) list.add(ride);
-//                } else if (name.endsWith(".gpx")) {
-//                    RideVO ride = processGpxFile(file);
-//                    if (ride != null) list.add(ride);
-//                } else if (name.endsWith(".tcx")) {
-//                    RideVO ride = processTcxFile(file);
-//                    if (ride != null) list.add(ride);
                 }
-                // TODO: GPX/TCX 처리 추가 예정
             }
-
         } catch (Exception e) {
             logger.error("❗ 파일 로딩 오류: " + folderPath, e);
         }
@@ -122,8 +104,8 @@ public class FitReader {
                 }
                 if (mesg.getTotalDistance() != null) core.setTotalDistance(mesg.getTotalDistance() / 1000.0);
                 if (mesg.getTotalCalories() != null) core.setTotalCalories(mesg.getTotalCalories());
-                if (mesg.getTotalTimerTime() != null) core.setMovingTime((int) (mesg.getTotalTimerTime() / 60)); // 🟢 라이딩 시간
-                if (mesg.getTotalElapsedTime() != null) core.setTotalTime((int) (mesg.getTotalElapsedTime() / 60)); // 🔵 총 시간
+                if (mesg.getTotalTimerTime() != null) core.setMovingTime((int) (mesg.getTotalTimerTime() / 60));
+                if (mesg.getTotalElapsedTime() != null) core.setTotalTime((int) (mesg.getTotalElapsedTime() / 60));
                 if (mesg.getTotalAscent() != null) core.setTotalAscent((int) mesg.getTotalAscent());
                 core.setFilename(file.getName());
             });
@@ -149,136 +131,42 @@ public class FitReader {
         return ride;
     }
 
-    public ResponseEntity<List<ActivityPointVO>> getPointsFromFit(String fileName) {
-        List<ActivityPointVO> points = new ArrayList<>();
-
-        try {
-            URL fitUrl = getClass().getClassLoader().getResource("fit/fit");
-            if (fitUrl == null) return ResponseEntity.notFound().build();
-
-            File file = new File(fitUrl.getFile(), fileName);
-            if (!file.exists()) return ResponseEntity.notFound().build();
-
-            try (InputStream is = new FileInputStream(file)) {
-                Decode decode = new Decode();
-                MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
-
-                broadcaster.addListener((RecordMesgListener) mesg -> {
-                    if (mesg.getPositionLat() != null && mesg.getPositionLong() != null) {
-                        double lat = mesg.getPositionLat() * (180.0 / Math.pow(2, 31));
-                        double lon = mesg.getPositionLong() * (180.0 / Math.pow(2, 31));
-                        points.add(new ActivityPointVO(lat, lon));
-                    }
-                });
-
-                decode.read(is, broadcaster);
-            }
-
-        } catch (Exception e) {
-            logger.warn("❗ FIT 파일 파싱 실패: {}", e.getMessage());
-            return ResponseEntity.status(500).body(null);
-        }
-
-        return ResponseEntity.ok(points);
-    }
-
-    public ResponseEntity<List<ActivityPointVO>> loadPointsFromGpx(String fileName) {
-        List<ActivityPointVO> points = new ArrayList<>();
-        try {
-            URL gpxUrl = getClass().getClassLoader().getResource("fit/gpx");
-            if (gpxUrl == null) return ResponseEntity.notFound().build();
-
-            File file = new File(gpxUrl.getFile(), fileName);
-            if (!file.exists()) return ResponseEntity.notFound().build();
-
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(file);
-
-            NodeList trkpts = doc.getElementsByTagName("trkpt");
-            for (int i = 0; i < trkpts.getLength(); i++) {
-                Element trkpt = (Element) trkpts.item(i);
-                double lat = Double.parseDouble(trkpt.getAttribute("lat"));
-                double lon = Double.parseDouble(trkpt.getAttribute("lon"));
-                points.add(new ActivityPointVO(lat, lon));
-            }
-        } catch (Exception e) {
-            logger.warn("❗ GPX 파싱 실패: {}", e.getMessage());
-            return ResponseEntity.status(500).body(null);
-        }
-
-        return ResponseEntity.ok(points);
-    }
-
-    public ResponseEntity<List<ActivityPointVO>> loadPointsFromTcx(String fileName) {
-        List<ActivityPointVO> points = new ArrayList<>();
-        try {
-            URL tcxUrl = getClass().getClassLoader().getResource("fit/tcx");
-            if (tcxUrl == null) return ResponseEntity.notFound().build();
-
-            File file = new File(tcxUrl.getFile(), fileName);
-            if (!file.exists()) return ResponseEntity.notFound().build();
-
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document doc = builder.parse(file);
-
-            NodeList trackpoints = doc.getElementsByTagName("Trackpoint");
-            for (int i = 0; i < trackpoints.getLength(); i++) {
-                Element tp = (Element) trackpoints.item(i);
-                NodeList positions = tp.getElementsByTagName("Position");
-                if (positions.getLength() > 0) {
-                    Element pos = (Element) positions.item(0);
-                    double lat = Double.parseDouble(pos.getElementsByTagName("LatitudeDegrees").item(0).getTextContent());
-                    double lon = Double.parseDouble(pos.getElementsByTagName("LongitudeDegrees").item(0).getTextContent());
-                    points.add(new ActivityPointVO(lat, lon));
-                }
-            }
-        } catch (Exception e) {
-            logger.warn("❗ TCX 파싱 실패: {}", e.getMessage());
-            return ResponseEntity.status(500).body(null);
-        }
-
-        return ResponseEntity.ok(points);
-    }
-
-    public List<String> getFitFileNames(String folderPath) {
-        List<String> result = new ArrayList<>();
-
-        try {
-            URL resourceUrl = getClass().getClassLoader().getResource(folderPath);
-            if (resourceUrl == null) {
-                logger.warn("❌ 리소스를 찾을 수 없습니다: " + folderPath);
-                return result;
-            }
-
-            File folder = new File(resourceUrl.toURI());
-            File[] files = folder.listFiles((dir, name) ->
-                    name.endsWith(".fit") || name.endsWith(".gpx") || name.endsWith(".tcx")
-            );
-
-            if (files != null) {
-                for (File file : files) {
-                    result.add(file.getName());
-                }
-            }
-        } catch (Exception e) {
-            logger.error("⚠️ 파일 목록 가져오기 실패: {}", e.getMessage());
-        }
-
-        return result;
-    }
-
-    public RideVO readFromFile(Path path) {
+    public RideVO readFromFile(String fileName) {
         RideVO ride = new RideVO();
         List<ActivityPointVO> route = new ArrayList<>();
+        ActivityCoreVO core = new ActivityCoreVO();
 
-        try (InputStream in = Files.newInputStream(path)) {
+        String linuxPath = "/home/tho881/NAS/fit/" + fileName;
+        try (InputStream in = Files.newInputStream(Paths.get(linuxPath))) {
             Decode decode = new Decode();
             MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
 
-            final ActivityCoreVO core = new ActivityCoreVO();
+            // ✅ Session 메시지 리스너 등록 (총합 데이터: 거리, 칼로리, 총 시간, 고도 상승)
+            broadcaster.addListener((SessionMesgListener) mesg -> {
+                if (mesg.getStartTime() != null && core.getStartTime() == null) {
+                    core.setStartTime(mesg.getStartTime().getDate()
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime());
+                }
+                if (mesg.getTotalDistance() != null) {
+                    core.setTotalDistance(mesg.getTotalDistance() / 1000.0);
+                }
+                if (mesg.getTotalCalories() != null) {
+                    core.setTotalCalories(mesg.getTotalCalories());
+                }
+                if (mesg.getTotalTimerTime() != null) {
+                    core.setMovingTime((int) (mesg.getTotalTimerTime() / 60));
+                }
+                if (mesg.getTotalElapsedTime() != null) {
+                    core.setTotalTime((int) (mesg.getTotalElapsedTime() / 60));
+                }
+                if (mesg.getTotalAscent() != null) {
+                    core.setTotalAscent(mesg.getTotalAscent().intValue()); // ✅ 고도 상승 추가
+                }
+            });
 
+            // ✅ Record 메시지 리스너 등록 (위치, 거리 계속 업데이트)
             broadcaster.addListener((RecordMesgListener) record -> {
                 if (record.getTimestamp() != null && core.getStartTime() == null) {
                     core.setStartTime(Utils.convertFitTimestamp(record.getTimestamp().getTimestamp()));
@@ -288,17 +176,14 @@ public class FitReader {
                     double lng = record.getPositionLong() * (180.0 / Math.pow(2, 31));
                     route.add(new ActivityPointVO(lat, lng));
                 }
-                if (record.getDistance() != null) {
-                    core.setTotalDistance(record.getDistance() / 1000.0); // ✅ totalDistance 필드에 대응
-                }
-                if (record.getAltitude() != null) {
-                    core.setTotalAscent(record.getAltitude().intValue()); // ✅ totalAscent 필드에 대응
+                if (record.getDistance() != null && core.getTotalDistance() == null) {
+                    core.setTotalDistance(record.getDistance() / 1000.0);
                 }
             });
 
             decode.read(in, broadcaster);
 
-            core.setFilename(path.getFileName().toString()); // ✅ filename 필드에 대응
+            core.setFilename(fileName);
             ride.setActivityCoreVO(core);
             ride.setRoute(route);
 

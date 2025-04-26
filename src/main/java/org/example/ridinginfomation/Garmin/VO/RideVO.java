@@ -13,4 +13,5 @@ public class RideVO {
     private ActivityCoreVO activityCoreVO;
     private List<ActivityPointVO> route;
     private ActivityWeatherVO activityWeatherVO;
+    // Getters/Setters
 }
