@@ -8,12 +8,15 @@
     </div>
 
     <div class="feed-card">
-      <img src="https://via.placeholder.com/600x300" alt="Ride Snapshot" />
+      <div v-if="mapImageUrl">
+        <h3>📍 라이딩 경로 지도</h3>
+        <img :src="mapImageUrl" alt="라이딩 경로 지도" style="width: 100%; max-width: 600px;" />
+      </div>
       <div class="feed-content">
         <p><strong>거리:</strong> {{ rideInfo.activityCoreVO.totalDistance.toFixed(2) }}km</p>
         <p><strong>고도 상승:</strong> {{ rideInfo.activityCoreVO.totalAscent }}m</p>
         <p><strong>시간:</strong> {{ formatTime(rideInfo.activityCoreVO.movingTime) }}</p>
-        <p>오늘도 열심히 달렸습니다! 날씨가 정말 좋았고, 업힐도 재미있었어요 🚴‍♂️☀️</p>
+        <p>오늘도 열심히 달렸습니다! 🚴‍♂️☀️</p>
       </div>
     </div>
   </div>
@@ -29,12 +32,18 @@ import { useRoute } from 'vue-router';
 const route = useRoute();
 const filename = route.params.filename;
 const rideInfo = ref(null);
+const mapImageUrl = ref('');  // ✅ 여기에 최종 URL 세팅
 
 onMounted(async () => {
   try {
     const res = await fetch(`/api/fit/detail/${filename}`);
     rideInfo.value = await res.json();
     console.log('✅ rideInfo:', rideInfo.value);
+
+    if (rideInfo.value?.activityCoreVO?.startTime) {
+      mapImageUrl.value = `test.png`;
+      // ✅ NAS 경로에 맞게 '/'부터 시작 (정적 파일 서빙 중이니까)
+    }
   } catch (e) {
     console.error('❌ 상세 데이터 로딩 실패', e);
   }
@@ -66,12 +75,14 @@ const formatTime = (minutes) => {
   margin: 0 auto;
   text-align: left;
 }
+
 .meta {
   background: #f0f0f0;
   padding: 15px;
   border-radius: 8px;
   margin-bottom: 20px;
 }
+
 .feed-card {
   background: #ffffff;
   border-radius: 10px;
@@ -79,11 +90,13 @@ const formatTime = (minutes) => {
   margin-bottom: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
+
 .feed-card img {
   width: 100%;
   border-radius: 10px;
   margin-bottom: 10px;
 }
+
 .feed-content p {
   margin: 5px 0;
 }

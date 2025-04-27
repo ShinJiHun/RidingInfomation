@@ -136,7 +136,7 @@ export default {
       }
     },
     onRowClick(filename) {
-      this.$router.push(`/ride/${filename}`);
+      this.$router.push(`/detail/${filename}`);  // ✅ 수정
     }
   },
   mounted() {

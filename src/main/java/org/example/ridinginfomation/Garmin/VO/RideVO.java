@@ -13,5 +13,6 @@ public class RideVO {
     private ActivityCoreVO activityCoreVO;
     private List<ActivityPointVO> route;
     private ActivityWeatherVO activityWeatherVO;
+    private String mapImageUrl;
     // Getters/Setters
 }

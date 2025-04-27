@@ -39,6 +39,7 @@ dependencies {
     implementation files('libs/fit.jar')
 }
 
+
 tasks.withType(JavaCompile) {
     options.compilerArgs += ["-Xlint:-removal"]
 }
@@ -57,4 +58,8 @@ task copyFrontend(type: Copy) {
 
 tasks.named('test') {
     enabled = false
+}
+
+bootJar {
+    archiveFileName = 'RidingInformation.jar'
 }

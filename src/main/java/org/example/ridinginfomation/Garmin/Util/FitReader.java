@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -29,9 +30,6 @@ public class FitReader {
 
     private static final Logger logger = LoggerFactory.getLogger(FitReader.class);
     private final List<RideVO> cache = new ArrayList<>();
-
-    private Float previousAltitude = null;
-    private int totalAscent = 0;
 
     @PostConstruct
     public void init() {
@@ -105,7 +103,17 @@ public class FitReader {
                 if (mesg.getTotalDistance() != null) core.setTotalDistance(mesg.getTotalDistance() / 1000.0);
                 if (mesg.getTotalCalories() != null) core.setTotalCalories(mesg.getTotalCalories());
                 if (mesg.getTotalTimerTime() != null) core.setMovingTime((int) (mesg.getTotalTimerTime() / 60));
-                if (mesg.getTotalElapsedTime() != null) core.setTotalTime((int) (mesg.getTotalElapsedTime() / 60));
+                if (mesg.getTotalElapsedTime() != null) {
+                    core.setTotalTime((int) (mesg.getTotalElapsedTime() / 60));
+
+                    LocalDateTime localDateTime = mesg.getStartTime().getDate()
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+
+                    LocalDateTime localEndTime = localDateTime.plusSeconds(mesg.getTotalElapsedTime().longValue());
+                    core.setEndTime(localEndTime);
+                }
                 if (mesg.getTotalAscent() != null) core.setTotalAscent((int) mesg.getTotalAscent());
                 core.setFilename(file.getName());
             });
@@ -193,4 +201,46 @@ public class FitReader {
 
         return ride;
     }
+
+    // FitReader.java 안에 추가
+    public ActivityCoreVO extractCoreInfo(File file) throws IOException {
+        ActivityCoreVO core = new ActivityCoreVO();
+        try (InputStream is = new FileInputStream(file)) {
+            Decode decode = new Decode();
+            MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
+            broadcaster.addListener((SessionMesgListener) mesg -> {
+                if (mesg.getStartTime() != null) {
+                    LocalDateTime startTime = mesg.getStartTime().getDate()
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+                    core.setStartTime(startTime);
+                }
+            });
+            decode.read(is, broadcaster);
+        } catch (Exception e) {
+            throw new IOException("FIT 파일 읽기 실패", e);
+        }
+        return core;
+    }
+
+    public List<double[]> extractRoutePoints(File file) throws IOException {
+        List<double[]> points = new ArrayList<>();
+        try (InputStream is = new FileInputStream(file)) {
+            Decode decode = new Decode();
+            MesgBroadcaster broadcaster = new MesgBroadcaster(decode);
+            broadcaster.addListener((RecordMesgListener) mesg -> {
+                if (mesg.getPositionLat() != null && mesg.getPositionLong() != null) {
+                    double lat = mesg.getPositionLat() * (180.0 / Math.pow(2, 31));
+                    double lon = mesg.getPositionLong() * (180.0 / Math.pow(2, 31));
+                    points.add(new double[]{lat, lon});
+                }
+            });
+            decode.read(is, broadcaster);
+        } catch (Exception e) {
+            throw new IOException("FIT 파일 읽기 실패", e);
+        }
+        return points;
+    }
+
 }

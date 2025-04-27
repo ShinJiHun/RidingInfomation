@@ -11,7 +11,7 @@
         {{ tab.label }}
       </router-link>
     </div>
-    <router-view />
+    <router-view/>
   </div>
 </template>
 
@@ -21,14 +21,15 @@ export default {
   data() {
     return {
       tabs: [
-        {label: 'Garmin Table', path: '/'},
-        {label: 'Garmin Map', path: '/map'},
-        {label: 'Detail Page', path: '/ride/sample.fit'}, // ✔️ 실제 존재하는 라우트
+        {label: 'Record Save Page', path: '/upload'}, // ✅ 업로드 페이지 경로 수정
+        {label: 'Garmin Table', path: '/'},            // ✅ 홈
+        {label: 'Garmin Map', path: '/map'},           // ✅ 지도
       ],
     };
   },
 };
 </script>
+
 
 <style>
 #app {
