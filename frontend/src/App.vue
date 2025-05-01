@@ -21,10 +21,10 @@ export default {
   data() {
     return {
       tabs: [
-        {label: 'Record Save Page', path: '/upload'}, // ✅ 업로드 페이지 경로 수정
-        {label: 'Garmin Table', path: '/'},            // ✅ 홈
-        {label: 'Garmin Map', path: '/map'},           // ✅ 지도
-      ],
+        {label: 'Record Save Page', path: '/upload'},
+        {label: 'Riding Summary', path: '/'},          // ✅ 수정: Garmin Table → Riding Summary
+        {label: 'Garmin Map', path: '/map'}
+      ]
     };
   },
 };

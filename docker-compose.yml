@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  riding-db:
+    image: mariadb:11.6
+    environment:
+      MYSQL_ROOT_PASSWORD: ride1234!
+      MYSQL_DATABASE: riding_db
+      MYSQL_USER: tho881
+      MYSQL_PASSWORD: ride1234!
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - /home/tho881/NAS:/home/tho881/NAS
+    networks:
+      - riding-network
+
+  springboot:
+    image: riding-springboot-image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    depends_on:
+      - riding-db
+    volumes:
+      - /home/tho881/NAS:/home/tho881/NAS
+    networks:
+      - riding-network
+
+volumes:
+  mariadb-data:
+
+networks:
+  riding-network:

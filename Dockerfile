@@ -1,6 +1,4 @@
-# RidingInformation.jar용
+RUN apt-get update && apt-get install -y mysql-client
 FROM openjdk:17-jdk-slim
-VOLUME /tmp
-COPY build/libs/RidingInformation.jar app.jar
-ENTRYPOINT ["java","-jar","/app.jar"]
-
+COPY RidingInformation.jar app.jar
+ENTRYPOINT ["java", "-jar", "/app.jar"]

@@ -1,11 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import RideSummaryTable from '@/components/GarminTable.vue';
+import RideSummaryTable from '@/components/RideList.vue';
 import RideDetail from '@/components/RideDetail.vue';
-import FitUpload from '@/components/FitUpload.vue'; // ✅ 추가
+import FitUpload from '@/components/FitUpload.vue';
 
 const routes = [
     {
-        path: '/detail/:filename',   // ✅ 먼저 선언 (더 구체적인 경로가 항상 위)
+        path: '/ride/:id',   // ✅ id 기반으로 수정
         name: 'RideDetail',
         component: RideDetail
     },
@@ -18,9 +18,8 @@ const routes = [
         path: '/',
         name: 'Home',
         component: RideSummaryTable
-    },
+    }
 ];
-
 
 const router = createRouter({
     history: createWebHistory(),

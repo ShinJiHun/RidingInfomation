@@ -7,6 +7,7 @@ import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.connection.channel.direct.Session;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
+import org.example.ridinginfomation.Garmin.Entity.ActivityPointEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -158,5 +160,34 @@ public class Utils {
             System.out.println("❌ FIT 시간 추출 실패: " + fitFile + " → " + e.getMessage());
             return null;
         }
+    }
+
+    public static String encodePolyline(List<ActivityPointEntity> route) {
+        StringBuilder encoded = new StringBuilder();
+        long lastLat = 0, lastLng = 0;
+
+        for (ActivityPointEntity point : route) {
+            long lat = Math.round(point.getLatitude() * 1e5);
+            long lng = Math.round(point.getLongitude() * 1e5);
+
+            long dLat = lat - lastLat;
+            long dLng = lng - lastLng;
+
+            encodeValue(dLat, encoded);
+            encodeValue(dLng, encoded);
+
+            lastLat = lat;
+            lastLng = lng;
+        }
+        return encoded.toString();
+    }
+
+    private static void encodeValue(long v, StringBuilder encoded) {
+        v = v < 0 ? ~(v << 1) : (v << 1);
+        while (v >= 0x20) {
+            encoded.append((char)((0x20 | (v & 0x1f)) + 63));
+            v >>= 5;
+        }
+        encoded.append((char)(v + 63));
     }
 }

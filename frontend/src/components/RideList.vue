@@ -36,9 +36,9 @@
       <tbody>
       <tr
           v-for="item in sortedList"
-          :key="item.filename"
+          :key="item.id"
           class="clickable-row"
-          @click="onRowClick(item.filename)"
+          @click="onRowClick(item.id)"
       >
         <td>{{ formatDate(item.startTime) }}</td>
         <td>{{ item.totalDistance?.toFixed(2) }}</td>
@@ -116,10 +116,17 @@ export default {
     },
     async fetchRideData() {
       try {
-        const res = await fetch('/api/fit/files');
-        console.log("Resources : ", res);
+        const res = await fetch('/api/rides', {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
         const data = await res.json();
-        console.log("this.data : ", data);
         this.rideList = data;
 
         this.totalSummary = {
@@ -135,8 +142,8 @@ export default {
         this.loading = false;
       }
     },
-    onRowClick(filename) {
-      this.$router.push(`/detail/${filename}`);  // ✅ 수정
+    onRowClick(id) {
+      this.$router.push(`/ride/${id}`);  // ✅ filename → id 기반 URL로 수정
     }
   },
   mounted() {
